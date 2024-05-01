@@ -1,0 +1,35 @@
+name: easy_mp3
+description: "Easy youtube mp3 downloader"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.4 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  youtube_explode_dart: ^2.2.0
+  file_picker: ^8.0.3
+  window_manager: ^0.3.8
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+flutter_launcher_icons:
+  image_path: "assets/icon/icon.png"
+  windows:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    icon_size: 64
+  macos:
+    generate: true
+    image_path: "assets/icon/icon.png"
