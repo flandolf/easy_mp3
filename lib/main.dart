@@ -51,6 +51,64 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _outputController = TextEditingController();
   bool _downloading = false;
 
+  void _downloadPlaylist() async {
+    if (_urlController.text.isEmpty) {
+      return;
+    }
+    if (!_urlController.text.contains("playlist")) {
+      return;
+    }
+    setState(() {
+      _downloading = true;
+    });
+    final url = _urlController.text;
+    var yt = YoutubeExplode();
+    _outputController.text = 'Downloading...';
+    var playlist = await yt.playlists.get(url);
+    _outputController.text += '\nTitle: ${playlist.title}';
+    _outputController.text += '\nAuthor: ${playlist.author}';
+    _outputController.text += '\nVideos: ${playlist.videoCount}';
+    var sanitizedTitle = playlist.title.replaceAll(RegExp(r'[^\w\s]+'), '');
+    String? outputFolder = await FilePicker.platform.getDirectoryPath();
+    if (outputFolder == null) {
+      return;
+    }
+    _outputController.text += '\nOutput: $outputFolder';
+    await for (var video in yt.playlists.getVideos(playlist.id)) {
+      var videoInfo = await yt.videos.get(video.id);
+      var sanitizedTitle = videoInfo.title.replaceAll(RegExp(r'[^\w\s]+'), '');
+      var outputFileName = '$outputFolder/$sanitizedTitle.m4a';
+      _outputController.text += '\nDownloading: ${videoInfo.title}';
+      var manifest = await yt.videos.streamsClient.getManifest(video.id);
+      var audioStreamInfo = manifest.audioOnly.first;
+      var audioStream = yt.videos.streamsClient.get(audioStreamInfo);
+      var file = File(outputFileName);
+      var fileStream = file.openWrite();
+      await for (var data in audioStream) {
+        fileStream.add(data);
+      }
+      await fileStream.flush();
+      await fileStream.close();
+      _outputController.text += '\nDownloaded to $outputFileName';
+      await Process.run("ffmpeg", [
+        "-i",
+        outputFileName,
+        "-c:v",
+        "copy",
+        "-c:a",
+        "libmp3lame",
+        "-q:a",
+        "4",
+        outputFileName.replaceAll('.m4a', '.mp3')
+      ]).then((value) => {File(outputFileName).delete()});
+      _outputController.text +=
+          '\nConverted to ${outputFileName.replaceAll('.m4a', '.mp3')}';
+    }
+    setState(() {
+      _downloading = false;
+    });
+  }
+
   void _download() async {
     setState(() {
       _downloading = true;
@@ -127,7 +185,13 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(width: 12),
                 IconButton.filled(
                   icon: const Icon(Icons.search),
-                  onPressed: _download,
+                  onPressed: () {
+                    if (_urlController.text.contains("playlist")) {
+                      _downloadPlaylist();
+                    } else {
+                      _download();
+                    }
+                  },
                 ),
               ],
             ),
@@ -140,7 +204,7 @@ class _HomePageState extends State<HomePage> {
                 child: TextField(
               controller: _outputController,
               readOnly: true,
-              maxLines: 10,
+              maxLines: 1000000,
               decoration: const InputDecoration(
                   hintText: 'Output', border: OutlineInputBorder()),
             )),
